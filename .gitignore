@@ -1,0 +1,4 @@
+*.csv
+models/
+*logs/
+.ipynb_checkpoints/
