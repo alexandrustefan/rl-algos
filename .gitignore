@@ -2,3 +2,4 @@
 models/
 *logs/
 .ipynb_checkpoints/
+.venv/
