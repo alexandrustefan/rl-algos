@@ -21,7 +21,7 @@ class SimpleTradingEnv(gym.Env):
         
         self.df = df
         self.window_size = OBSERVATION_WINDOW_SIZE
-        self.features = self._process_data(df)
+        self.prices, self.features = self._process_data(df)
         self.obs_shape = (OBSERVATION_WINDOW_SIZE, self.features.shape[1])
 
         # Action space
@@ -159,28 +159,28 @@ class SimpleTradingEnv(gym.Env):
         """
         Renders a plot with trades made by the agent.
         """
-        action_types, action_amounts, prices = zip(*self._action_history)
+        action_types, action_amounts, _ = zip(*self._action_history)
 
-        def _plot_actions(action, candle, prices):
+        def _plot_actions(action, candle):
             color = None
             if action == 'Sell':
                 color = 'red'
             elif action == 'Buy':
                 color = 'green'
             if color:
-                plt.scatter(candle, prices[candle], color=color)
+                plt.scatter(candle, self.prices[candle], color=color)
 
         if self._first_rendering:
             self._first_rendering = False
             plt.cla()
             # Plot the prices
-            plt.plot(prices)
+            plt.plot(self.prices)
             
             start_action = action_types[0]
 
-            _plot_actions(start_action, self._start_candle, prices)
+            _plot_actions(start_action, self._start_candle)
 
-        _plot_actions(self._last_action_type, self._current_candle, prices)
+        _plot_actions(self._last_action_type, self._current_candle)
 
         plt.suptitle(
             "Accumulated Reward: %.6f" % self._total_reward_accumulated + ' ~ ' +
@@ -193,10 +193,13 @@ class SimpleTradingEnv(gym.Env):
         """
         Processes the dataframe into features.
         """
+
+        prices = self.df.loc[:, 'close'].to_numpy()
+
         data_frame = df.iloc[:, 1:] # drop first column which is date
 
         # Convert df to numpy array
-        return data_frame.to_numpy(dtype=np.float32)
+        return prices, data_frame.to_numpy(dtype=np.float32)
 
     def _generate_action_data_tuple(self, action, price):
         """
