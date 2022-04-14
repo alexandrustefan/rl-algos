@@ -25,10 +25,9 @@ class SimpleTradingEnv(gym.Env):
         self.obs_shape = (OBSERVATION_WINDOW_SIZE, self.features.shape[1])
 
         # Action space
-        self.action_space = spaces.Box(low=np.array([0.0]), high = np.array([3,1]), dtype=np.float16),
-
+        self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([3.0, 1.0]), dtype=np.float32)
         # Observation space
-        self.observation_space = spaces.Box(low=-np.inf, high = np.inf, shape=self.obs_shape, dtype=np.float16)
+        self.observation_space = spaces.Box(low=-1, high = 1, shape=self.obs_shape, dtype=np.float32)
 
         # Initialize the episode environment
 
@@ -59,7 +58,7 @@ class SimpleTradingEnv(gym.Env):
         self._net_worth = INITIAL_QUOTE_ASSET # at the begining our net worth is the initial quote asset
         self._previous_net_worth = INITIAL_QUOTE_ASSET # at the begining our previous net worth is the initial quote asset
         self._action_history = []
-        self._total_reward = 0.
+        self._total_reward_accumulated = 0.
         self._first_rendering = True
         self._last_action_type = 'Buy'
         self.trade_history = {}
@@ -69,7 +68,7 @@ class SimpleTradingEnv(gym.Env):
         self._done = False
         self._current_candle += 1
         current_price = random.uniform(
-            self.df.loc[self.current_step, "low"], self.df.loc[self.current_step, "high"])
+            self.df.loc[self._current_candle, "low"], self.df.loc[self._current_candle, "high"])
 
         if self._current_candle == self._end_candle:
             self._done = True
@@ -114,7 +113,6 @@ class SimpleTradingEnv(gym.Env):
         """
         self._current_candle += 1
         self._take_action(action)
-        obs = self._get_observation()
 
         # Calculate reward comparing the current net worth with the previous net worth
         reward = self._net_worth - self._previous_net_worth
@@ -124,6 +122,7 @@ class SimpleTradingEnv(gym.Env):
         # Update the previous net worth to be the current net worth after the reward has been applied
         self._previous_net_worth = self._net_worth
 
+        obs = self._get_observation()
         # Update the info and add it to history data
         info = dict (
             total_reward_accumulated = self._total_reward_accumulated,
@@ -132,7 +131,8 @@ class SimpleTradingEnv(gym.Env):
             action_amount = action[1],
         )
 
-        self._update_trade_history(self,info)
+        self._update_trade_history(info)
+
 
         return obs, reward, self._done, info
 
@@ -141,11 +141,11 @@ class SimpleTradingEnv(gym.Env):
         """
         Returns the current observation.
         """
-        data_frame = self.features[self._current_candle - self.window_size:self._current_candle]
+        data_frame = self.features[(self._current_candle - self.window_size):self._current_candle]
 
-        obs = np.append(data_frame, [self._net_worth, self._quote_asset, self._base_asset], axis=0)
+        #obs = np.append(data_frame, [[self._net_worth, self._quote_asset, self._base_asset]], axis=0)
 
-        return obs
+        return data_frame
 
     def _update_trade_history(self, info):
         if not self.trade_history:
@@ -161,11 +161,11 @@ class SimpleTradingEnv(gym.Env):
         """
         action_types, action_amounts, prices = zip(*self._action_history)
 
-        def _plot_actions(position, candle, prices):
+        def _plot_actions(action, candle, prices):
             color = None
-            if position == 'Sell':
+            if action == 'Sell':
                 color = 'red'
-            elif position == 'Buy':
+            elif action == 'Buy':
                 color = 'green'
             if color:
                 plt.scatter(candle, prices[candle], color=color)
@@ -176,14 +176,14 @@ class SimpleTradingEnv(gym.Env):
             # Plot the prices
             plt.plot(prices)
             
-            start_position = action_types[self._start_candle]
+            start_action = action_types[0]
 
-            _plot_actions(start_position, self._start_candle)
+            _plot_actions(start_action, self._start_candle, prices)
 
-        _plot_actions(self._last_action_type, self._current_candle)
+        _plot_actions(self._last_action_type, self._current_candle, prices)
 
         plt.suptitle(
-            "Accumulated Reward: %.6f" % self._total_reward + ' ~ ' +
+            "Accumulated Reward: %.6f" % self._total_reward_accumulated + ' ~ ' +
             "Net Worth: %.6f" % self._net_worth
         )
 
@@ -193,9 +193,10 @@ class SimpleTradingEnv(gym.Env):
         """
         Processes the dataframe into features.
         """
+        data_frame = df.iloc[:, 1:] # drop first column which is date
 
         # Convert df to numpy array
-        return df.to_numpy()
+        return data_frame.to_numpy(dtype=np.float32)
 
     def _generate_action_data_tuple(self, action, price):
         """
@@ -208,6 +209,6 @@ class SimpleTradingEnv(gym.Env):
         amount = action[1]
         return (action_type, amount, price)
 
-    def _get_human_readable_action(action):
+    def _get_human_readable_action(self, action):
         action_type_name = 'Buy' if action[0] < 1 else 'Sell' if action[0] < 2 else 'Hold'
         return action_type_name    
