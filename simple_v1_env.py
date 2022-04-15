@@ -22,7 +22,10 @@ class SimpleTradingEnv(gym.Env):
         self.df = df
         self.window_size = OBSERVATION_WINDOW_SIZE
         self.prices, self.features = self._process_data(df)
-        self.obs_shape = (OBSERVATION_WINDOW_SIZE, self.features.shape[1])
+        # The shape of the observation is (window_size * features + environment_features) the environment_features are: quote_asset, base_asset, net_worth. The entire observation is flattened in a 1D np array. 
+        self.obs_shape = ((OBSERVATION_WINDOW_SIZE * self.features.shape[1] + 3),)
+
+        print(self.obs_shape)
 
         # Action space
         self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([3.0, 1.0]), dtype=np.float32)
@@ -147,10 +150,12 @@ class SimpleTradingEnv(gym.Env):
         Returns the current observation.
         """
         data_frame = self.features[(self._current_candle - self.window_size):self._current_candle]
+        data_frame = data_frame.flatten()
 
-        #obs = np.append(data_frame, [[self._net_worth, self._quote_asset, self._base_asset]], axis=0)
 
-        return data_frame
+        obs = np.append(data_frame, np.array([self._net_worth / MAX_NET_WORTH , self._quote_asset / MAX_NUM_QUOTE_OR_BASE_ASSET, self._base_asset / MAX_NUM_QUOTE_OR_BASE_ASSET], dtype=np.float32))
+
+        return obs
 
     def _update_trade_history(self, info):
         if not self.trade_history:
@@ -229,9 +234,9 @@ class SimpleTradingEnv(gym.Env):
         Processes the dataframe into features.
         """
 
-        prices = self.df.loc[:, 'close'].to_numpy()
+        prices = self.df.loc[:, 'close'].to_numpy(dtype=np.float32)
 
-        data_frame = df.iloc[:, 1:] # drop first column which is date
+        data_frame = df.iloc[:, 1:] # drop first column which is date TODO: Should be fixed outside of this class
 
         # Convert df to numpy array
         return prices, data_frame.to_numpy(dtype=np.float32)
