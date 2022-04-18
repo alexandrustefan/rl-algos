@@ -1,5 +1,6 @@
 *.csv
 models/
+model/
 *logs/
 .ipynb_checkpoints/
 .venv/
