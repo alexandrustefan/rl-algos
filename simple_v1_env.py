@@ -70,9 +70,9 @@ class SimpleTradingEnv(gym.Env):
         current_price = random.uniform(
             self.df_normal.loc[self._current_candle, "low"], self.df_normal.loc[self._current_candle, "high"])
 
-        print('action: ', action)
-        print('action type: ', action[0])
-        print('action amount: ', action[1])
+        # print('action: ', action)
+        # print('action type: ', action[0])
+        # print('action amount: ', action[1])
         action_type = action[0]
         amount = action[1] / 100
         
@@ -141,8 +141,8 @@ class SimpleTradingEnv(gym.Env):
         info = dict (
             total_reward_accumulated = self._total_reward_accumulated,
             net_worth = self._net_worth,
-            action_type = self._get_human_readable_action(action),
-            action_amount = action[1],
+            last_action_type = self.trade_history[-1]['type'] if len(self.trade_history) > 0 else None,
+            last_action_amount = self.trade_history[-1]['amount'] if len(self.trade_history) > 0 else None,
             current_step = self._current_candle
         )
 

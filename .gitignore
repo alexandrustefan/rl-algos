@@ -5,3 +5,6 @@ model/
 .ipynb_checkpoints/
 .venv/
 data/
+test*
+train*
+valid*
