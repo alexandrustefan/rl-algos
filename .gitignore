@@ -8,3 +8,4 @@ data/
 test*
 train*
 valid*
+ray_results/
