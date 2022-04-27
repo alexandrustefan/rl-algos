@@ -9,3 +9,5 @@ test*
 train*
 valid*
 ray_results/
+tune_hyperparams*
+tune_logs*
